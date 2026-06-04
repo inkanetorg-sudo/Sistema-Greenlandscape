@@ -1,11 +1,11 @@
 <?php
 
 class Database {
-    // Credenciales de tu entorno local
+    // Credenciales (Recuerda poner las de tu hosting cuando lo subas)
     private $host = "localhost";
     private $db_name = "sistema_rutas";
-    private $username = "root"; // Cambia esto si tu usuario local es distinto
-    private $password = "";     // Cambia esto si tienes contraseña en tu entorno local
+    private $username = "root"; 
+    private $password = "";     
     public $conn;
 
     // Método para obtener la conexión a la base de datos
@@ -27,12 +27,18 @@ class Database {
             $this->conn = new PDO($dsn, $this->username, $this->password, $opciones);
 
         } catch(PDOException $exception) {
-            // En producción, es mejor registrar esto en un archivo de log, 
-            // pero en local nos sirve verlo en pantalla.
-            echo "Error de conexión: " . $exception->getMessage();
+            // 1. Guardamos el error real en el archivo de registro del servidor (Nadie más lo ve)
+            error_log("Error crítico de BD: " . $exception->getMessage());
+            
+            // 2. Le mostramos a la aplicación un mensaje genérico y seguro
+            die("Error del sistema: No se pudo conectar a la base de datos. Por favor, intente más tarde.");
         }
 
         return $this->conn;
     }
 }
+
+$database = new Database();
+$db = $database->getConnection();
+
 ?>

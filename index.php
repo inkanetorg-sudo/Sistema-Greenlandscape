@@ -12,6 +12,7 @@ require_once __DIR__ . '/controllers/LoginController.php';
 require_once __DIR__ . '/controllers/ClienteController.php';
 require_once __DIR__ . '/controllers/UsuarioController.php';
 require_once __DIR__ . '/controllers/ServicioController.php';
+require_once __DIR__ . '/config/database.php';
 
 // 3. Capturamos la acción (por defecto al login si no hay acción)
 $action = isset($_GET['action']) ? $_GET['action'] : 'login';
@@ -198,7 +199,100 @@ switch ($action) {
         $rutaController = new RutaController();
         $rutaController->reprogramarVisitaAntigua();
         break;
-        
+		
+	// --- MÓDULO DE PRODUCTOS / CATÁLOGO ---
+    case 'productos':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/ProductoController.php';
+        $controller = new ProductoController();
+        $controller->index();
+        break;
+
+    case 'producto_guardar':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/ProductoController.php';
+        $controller = new ProductoController();
+        $controller->guardar();
+        break;
+
+    case 'producto_cambiar_estado':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/ProductoController.php';
+        $controller = new ProductoController();
+        $controller->cambiarEstado();
+        break;
+    
+	// --- MÓDULO DE FACTURACIÓN (INVOICES) ---
+    case 'facturas':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/FacturaController.php';
+        $controller = new FacturaController();
+        $controller->index();
+        break;
+
+    case 'facturas_generar':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/FacturaController.php';
+        $controller = new FacturaController();
+        $controller->generarBatch();
+        break;
+		
+	case 'factura_eliminar':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/FacturaController.php';
+        $controller = new FacturaController();
+        $controller->eliminar();
+        break;
+		
+	case 'factura_pdf':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/FacturaController.php';
+        $controller = new FacturaController();
+        $controller->verPdf();
+        break;
+		
+	case 'factura_pagar':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/FacturaController.php';
+        $controller = new FacturaController();
+        $controller->registrarPago();
+        break;
+	
+	case 'facturas_enviar_masivo':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/FacturaController.php';
+        $controller = new FacturaController();
+        $controller->enviarMasivo();
+        break;
+		
+	case 'reportes':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/FacturaController.php';
+        $controller = new FacturaController();
+        $controller->reporteMensual();
+        break;
+	
+	case 'marketing':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/MarketingController.php';
+        $controller = new MarketingController($db); // Asegúrate de pasar tu variable $db
+        $controller->index();
+        break;
+
+    case 'marketing_aviso_temporada':
+        if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+        require_once 'controllers/MarketingController.php';
+        $controller = new MarketingController($db);
+        $controller->avisoTemporada();
+        break;
+		
+	case 'marketing_segmentado':
+		if ($_SESSION['rol'] !== 'admin') { die("Acceso denegado."); }
+		require_once 'controllers/MarketingController.php';
+		$controller = new MarketingController($db);
+		$controller->filtrarClientesPorServicio();
+		break;
+	
     default:
         http_response_code(404);
         echo "<h1>404 - Página no encontrada</h1>";

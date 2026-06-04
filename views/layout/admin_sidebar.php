@@ -75,16 +75,26 @@
 
 <div class="admin-sidebar">
     <div class="admin-sidebar-header">
-        <h3>SISTEMA RUTAS</h3>
+        <h3>SISTEMA GREENLANDSCAPE</h3>
         <small style="color: #9ca3af;">Panel de Administración</small>
     </div>
     
     <div class="admin-sidebar-nav">
+		<div style="padding: 10px 20px; font-size: 0.7rem; color: #6b7280; text-transform: uppercase; font-weight: bold;">
+			Gestión de Rutas
+		</div>
         <a href="/greenland/index.php?action=dashboard">📍 Seguimiento en Vivo</a>
         <a href="/greenland/index.php?action=crear_ruta">🗺️ Creador de Rutas</a>
         <a href="/greenland/index.php?action=clientes">👥 Directorio de Clientes</a>
         <a href="/greenland/index.php?action=empleados">👷 Equipo / Jardineros</a>
         <a href="/greenland/index.php?action=servicios">🛠️ Catálogo de Servicios</a>
+		<div style="padding: 10px 20px; font-size: 0.7rem; color: #6b7280; text-transform: uppercase; font-weight: bold; margin-top: 20px; border-top: 1px solid #374151;">
+			Gestión Financiera
+		</div>
+		<a href="/greenland/index.php?action=productos" class="sidebar-item">📦 Catálogo</a>
+		<a href="/greenland/index.php?action=facturas" class="sidebar-item">📄 Facturación</a>
+		<a href="/greenland/index.php?action=reportes" class="sidebar-item">📊 Reportes Financieros</a>
+		<a href="/greenland/index.php?action=marketing" class="sidebar-item">📢 Marketing</a>
     </div>
 
     <div class="admin-sidebar-footer">

@@ -27,7 +27,8 @@ class Ruta {
             'fecha' => $fecha
         ]);
         
-        return $stmt->fetchAll();
+        // Optimización: FETCH_ASSOC reduce a la mitad el consumo de memoria RAM del servidor
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // Actualiza el estado de la visita (Ej: de 'pendiente' a 'completado')
@@ -39,8 +40,8 @@ class Ruta {
             'id_detalle' => $id_detalle
         ]);
     }
-	
-	// Obtiene las visitas que quedaron pendientes en días pasados
+    
+    // Obtiene las visitas que quedaron pendientes en días pasados
     public function obtenerRezagados(): array {
         $query = "
             SELECT rd.id_detalle, c.nombre_completo, s.nombre_servicio, 

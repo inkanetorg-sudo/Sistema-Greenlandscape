@@ -106,7 +106,26 @@
                         <label>4. Orden de Visitas:</label>
                         <p style="font-size: 0.85rem; color: #6b7280; margin-top: 0;">Haz clic en el mapa o reprograma rezagados.</p>
                         <ol id="lista-paradas"></ol>
+						<button type="button" id="btnOptimizar" style="width: 100%; margin-top: 10px; padding: 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+							✨ Optimizar orden por distancia
+						</button>
                     </div>
+					
+					<div class="form-group" style="background: #f0fdf4; padding: 10px; border: 1px solid #bbf7d0; border-radius: 6px;">
+						<label for="cliente_select" style="color: #166534;">O agregar desde lista:</label>
+						<select id="cliente_select" style="margin-bottom: 0.5rem;">
+							<option value="">-- Seleccionar Dirección --</option>
+							<?php foreach($clientes as $cli): ?>
+								<option value="<?php echo $cli['id_cliente']; ?>">
+									<?php echo htmlspecialchars($cli['nombre_completo'] . ' - ' . $cli['direccion']); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+						
+						<button type="button" id="btnAgregarDeLista" style="width: 100%; padding: 0.5rem; background: #22c55e; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+							➕ Agregar a la ruta
+						</button>
+					</div>
                 </div>
 
                 <button class="btn-guardar" id="btnGuardar" style="margin-top: 2rem;">Guardar y Asignar Ruta</button>
@@ -119,43 +138,65 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let rutaSeleccionada = [];
+        let capaLíneaRuta = null; // NUEVO: Variable para guardar el trazo visual
 
         // 1. Inicializar el mapa
-        const map = L.map('mapa').setView([-12.075, -77.090], 14);
+        const map = L.map('mapa').setView([38.8462, -77.3064], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         const clientes = <?php echo json_encode($clientes); ?>;
 
-        // 2. Función reutilizable para agregar una parada (del mapa o rezagado)
-        function agregarParada(idCliente, idServicio, nombreCliente, nombreServicio, idDetalleAntiguo = null) {
-            const existe = rutaSeleccionada.some(parada => parada.id_cliente === idCliente);
+        // NUEVO: Función para dibujar la línea que conecta los puntos
+        function dibujarTrazoEnMapa() {
+            if (capaLíneaRuta) {
+                map.removeLayer(capaLíneaRuta);
+            }
 
-            if (!existe) {
-                // Guardamos el ID antiguo en el payload (null si viene del mapa normal)
-                rutaSeleccionada.push({ 
-                    id_cliente: idCliente, 
-                    id_servicio: parseInt(idServicio),
-                    id_detalle_antiguo: idDetalleAntiguo 
-                });
-                
-                const lista = document.getElementById('lista-paradas');
+            if (rutaSeleccionada.length < 2) return;
+
+            const coordenadas = rutaSeleccionada.map(parada => [parada.latitud, parada.longitud]);
+
+            capaLíneaRuta = L.polyline(coordenadas, {
+                color: '#ef4444',     // Rojo brillante
+                weight: 4,            // Grosor
+                opacity: 0.8,
+                dashArray: '10, 10',  // Línea punteada
+                lineJoin: 'round'
+            }).addTo(map);
+        }
+
+        // 1. Motor Matemático: Fórmula de Haversine
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radio de la Tierra en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // 2. Función que dibuja la lista en pantalla basándose en el orden del array
+        function renderizarListaParadas() {
+            const lista = document.getElementById('lista-paradas');
+            lista.innerHTML = ''; // Limpiamos la vista actual
+
+            rutaSeleccionada.forEach(parada => {
                 const li = document.createElement('li');
-                
                 const spanTexto = document.createElement('span');
-                spanTexto.innerHTML = `<b>${nombreCliente}</b><br><small style="color:#6b7280;">🛠️ ${nombreServicio}</small>`;
+                spanTexto.innerHTML = `<b>${parada.nombre_cliente}</b><br><small style="color:#6b7280;">🛠️ ${parada.nombre_servicio}</small>`;
                 
                 const btnEliminar = document.createElement('button');
                 btnEliminar.textContent = '✖';
                 btnEliminar.className = 'btn-eliminar';
                 
-                // Si eliminamos la parada de la lista
                 btnEliminar.addEventListener('click', function() {
-                    rutaSeleccionada = rutaSeleccionada.filter(parada => parada.id_cliente !== idCliente);
-                    lista.removeChild(li);
+                    rutaSeleccionada = rutaSeleccionada.filter(p => p.id_cliente !== parada.id_cliente);
+                    renderizarListaParadas(); // Repintamos la lista sin este cliente
                     
-                    // Si era un rezagado, hacemos que su tarjeta roja vuelva a aparecer
-                    if (idDetalleAntiguo) {
-                        const tarjeta = document.getElementById('rezagado-' + idDetalleAntiguo);
+                    if (parada.id_detalle_antiguo) {
+                        const tarjeta = document.getElementById('rezagado-' + parada.id_detalle_antiguo);
                         if (tarjeta) {
                             tarjeta.style.display = 'block';
                             setTimeout(() => tarjeta.style.opacity = "1", 10);
@@ -166,10 +207,68 @@
                 li.appendChild(spanTexto);
                 li.appendChild(btnEliminar);
                 lista.appendChild(li);
-            }
+            });
+
+            // NUEVO: Redibujamos el trazo en el mapa cada vez que la lista cambia
+            dibujarTrazoEnMapa();
         }
 
-        // 3. Marcadores del mapa
+        // 3. Función agregarParada
+        function agregarParada(idCliente, idServicio, nombreCliente, nombreServicio, idDetalleAntiguo = null) {
+            const existe = rutaSeleccionada.some(parada => parada.id_cliente === idCliente);
+
+            if (!existe) {
+                const clienteBD = clientes.find(c => c.id_cliente == idCliente);
+
+                rutaSeleccionada.push({ 
+                    id_cliente: idCliente, 
+                    id_servicio: parseInt(idServicio),
+                    nombre_cliente: nombreCliente,
+                    nombre_servicio: nombreServicio,
+                    id_detalle_antiguo: idDetalleAntiguo,
+                    latitud: clienteBD ? parseFloat(clienteBD.latitud) : 0,
+                    longitud: clienteBD ? parseFloat(clienteBD.longitud) : 0
+                });
+                
+                renderizarListaParadas();
+            }
+        }
+        
+        // 4. El botón de Magia (Vecino Más Cercano)
+        document.getElementById('btnOptimizar').addEventListener('click', function() {
+            if (rutaSeleccionada.length <= 2) {
+                alert("Agrega al menos 3 paradas para optimizar el recorrido.");
+                return;
+            }
+
+            let rutaOptimizada = [rutaSeleccionada[0]]; 
+            let pendientes = rutaSeleccionada.slice(1);
+            let actual = rutaOptimizada[0];
+
+            while (pendientes.length > 0) {
+                let indiceMasCercano = 0;
+                let distanciaMinima = Infinity;
+
+                for (let i = 0; i < pendientes.length; i++) {
+                    let dist = calcularDistancia(actual.latitud, actual.longitud, pendientes[i].latitud, pendientes[i].longitud);
+                    if (dist < distanciaMinima) {
+                        distanciaMinima = dist;
+                        indiceMasCercano = i;
+                    }
+                }
+
+                actual = pendientes[indiceMasCercano];
+                rutaOptimizada.push(actual);
+                pendientes.splice(indiceMasCercano, 1); 
+            }
+
+            rutaSeleccionada = rutaOptimizada;
+            renderizarListaParadas();
+            
+            alert("¡Ruta optimizada con éxito! Revisa el nuevo orden.");
+        });
+
+        // 5. Marcadores del mapa
         clientes.forEach(cliente => {
             const marcador = L.marker([cliente.latitud, cliente.longitud]).addTo(map);
             marcador.bindPopup(`<b>${cliente.nombre_completo}</b>`);
@@ -184,24 +283,21 @@
             });
         });
 
-        // 4. Función de Rezagados (Solo visual, ya NO hace Fetch a la BD)
+        // 6. Función de Rezagados
         function reprogramarRezagado(idDetalleAntiguo, idCliente, idServicio, nombreCliente, nombreServicio, botonElemento) {
-            
             if(!document.getElementById('empleado').value) {
                 alert("Primero selecciona el Jardinero que atenderá este rezago hoy.");
                 return;
             }
 
-            // Agregamos a la lista visual pasándole el ID antiguo
             agregarParada(idCliente, idServicio, nombreCliente, nombreServicio, idDetalleAntiguo);
 
-            // Ocultamos la tarjeta roja visualmente
             const tarjeta = botonElemento.parentElement;
             tarjeta.style.opacity = "0";
             setTimeout(() => tarjeta.style.display = 'none', 300);
         }
 
-        // 5. Enviar al backend (AQUÍ SÍ SE GUARDA TODO)
+        // 7. Enviar al backend
         document.getElementById('btnGuardar').addEventListener('click', async function() {
             const idEmpleado = document.getElementById('empleado').value;
             const fechaRuta = document.getElementById('fecha').value;
@@ -230,6 +326,34 @@
             } catch (error) {
                 console.error(error);
                 alert('Error de conexión con el servidor.');
+            }
+        });
+        
+        // 8. Función para agregar desde la lista desplegable
+        document.getElementById('btnAgregarDeLista').addEventListener('click', function() {
+            const selectCliente = document.getElementById('cliente_select');
+            const idCliente = selectCliente.value;
+
+            if (!idCliente) {
+                alert("Por favor, selecciona una dirección de la lista.");
+                return;
+            }
+
+            const selectServicio = document.getElementById('servicio');
+            const idServicio = selectServicio.value;
+            const nombreServicio = selectServicio.options[selectServicio.selectedIndex].text;
+
+            if (!idServicio) { 
+                alert("Por favor, selecciona un servicio."); 
+                return; 
+            }
+
+            const cliente = clientes.find(c => c.id_cliente == idCliente);
+            
+            if (cliente) {
+                agregarParada(cliente.id_cliente, idServicio, cliente.nombre_completo, nombreServicio, null);
+                map.flyTo([cliente.latitud, cliente.longitud], 16);
+                selectCliente.value = "";
             }
         });
     </script>
